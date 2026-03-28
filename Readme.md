@@ -43,7 +43,7 @@ Todo el sistema está contenido en un único archivo index.html, lo que signific
 
 |importar|exportar|
 |---|---|
-|![importar](./anexos/importar)|[!exportar](./anexos/exportar.png)|
+| ![importar](./anexos/importar.png) | ![exportar](./anexos/exportar.png) |
 
 
 
