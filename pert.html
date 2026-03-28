@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora PERT / CPM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        .table-container {
+            overflow-x: auto;
+        }
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            #seccion_red, #seccion_gantt {
+                page-break-inside: avoid;
+            }
+            .overflow-x-auto {
+                overflow-x: visible !important;
+            }
+            button, .zoom-controls {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen p-4 md:p-6">
+
+    <div class="w-full max-w-[1600px] mx-auto space-y-6">
+        
+        <!-- Header Principal con controles -->
+        <header class="bg-white shadow-md rounded-lg p-6 border-t-4 border-blue-600 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-center md:text-left flex-1">
+                <h1 class="text-3xl font-bold text-slate-800">Calculadora PERT / CPM</h1>
+                <p class="text-slate-500 mt-2">Diagrama de Red y Método de la Ruta Crítica</p>
+                <p class="text-slate-400 text-sm mt-1">Autor: Julio Sánchez Berro</p>
+            </div>
+            
+            <div class="flex flex-col items-center md:items-end gap-3 bg-gray-50 p-4 rounded-lg border border-gray-100 shadow-inner">
+                <button onclick="calcularPERT()" class="bg-green-600 hover:bg-green-700 text-white text-lg font-bold py-2 px-8 rounded-full shadow transition duration-200 transform hover:scale-105 w-full md:w-auto">
+                    🚀 Calcular PERT / CPM
+                </button>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-1">
+                    <div class="flex items-center gap-1.5">
+                        <input type="checkbox" id="chk_mostrar_id" checked onchange="actualizarVistaGraficos()" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                        <label for="chk_mostrar_id" class="text-xs font-medium text-gray-700 cursor-pointer whitespace-nowrap">Mostrar ID en gráficos</label>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <input type="checkbox" id="chk_mostrar_texto_gantt" checked onchange="actualizarVistaGraficos()" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                        <label for="chk_mostrar_texto_gantt" class="text-xs font-medium text-gray-700 cursor-pointer whitespace-nowrap">Texto en barras Gantt</label>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <input type="checkbox" id="chk_mostrar_flechas_gantt" checked onchange="actualizarVistaGraficos()" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                        <label for="chk_mostrar_flechas_gantt" class="text-xs font-medium text-gray-700 cursor-pointer whitespace-nowrap">Flechas Gantt</label>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navegación de Pestañas -->
+        <nav class="flex border-b border-gray-300 mb-6" aria-label="Tabs">
+            <button id="tab-btn-gestion" onclick="switchTab('gestion')" class="px-6 py-3 border-b-2 font-bold text-sm text-blue-600 border-blue-600 focus:outline-none transition-colors">
+                Gestión de Tareas
+            </button>
+            <button id="tab-btn-resultados" onclick="switchTab('resultados')" class="px-6 py-3 border-b-2 font-bold text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none transition-colors">
+                Resultados
+            </button>
+            <button id="tab-btn-ayuda" onclick="switchTab('ayuda')" class="px-6 py-3 border-b-2 font-bold text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none transition-colors">
+                Ayuda
+            </button>
+        </nav>
+
+        <!-- ==========================================
+             PESTAÑA 1: GESTIÓN DE TAREAS
+             ========================================== -->
+        <div id="tab-gestion" class="block">
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+                <!-- Panel Izquierdo: Formularios -->
+                <div class="xl:col-span-5 space-y-6">
+                    <section class="bg-white shadow-md rounded-lg p-6">
+                        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-4 border-b pb-2">
+                            <div class="flex items-center">
+                                <h2 class="text-xl font-semibold">Gestión de Tareas</h2>
+                            </div>
+                            <div class="flex items-center gap-1 mt-2 xl:mt-0 zoom-controls">
+                                <button type="button" onclick="zoomPanel(this, -0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Reducir tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" /></svg>
+                                </button>
+                                <button type="button" onclick="zoomPanel(this, 0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Aumentar tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-content origin-top transition-transform" style="zoom: 1;">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">ID Tarea (ej. A)*</label>
+                                    <input type="text" id="ent_id" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 uppercase" placeholder="A">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre descriptivo</label>
+                                    <input type="text" id="ent_nombre" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Diseño Inicial">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Predecesores (separados por coma)</label>
+                                    <input type="text" id="ent_preds" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 uppercase" placeholder="A, B">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">T. Optimista (o)*</label>
+                                    <input type="number" step="any" id="ent_o" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="2">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">T. Probable (m)*</label>
+                                    <input type="number" step="any" id="ent_m" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="4">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">T. Pesimista (p)*</label>
+                                    <input type="number" step="any" id="ent_p" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="6">
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="agregarTarea()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-150">
+                                    Añadir / Actualizar Tarea
+                                </button>
+                                <button onclick="limpiarFormulario()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md transition duration-150">
+                                    Limpiar Formulario
+                                </button>
+                                <button onclick="borrarTodo()" class="bg-red-100 hover:bg-red-200 text-red-700 font-medium py-2 px-4 rounded-md transition duration-150 ml-auto">
+                                    Borrar Todas
+                                </button>
+                            </div>
+
+                            <div class="mt-8 pt-6 border-t border-gray-200">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-3">📥 Importar desde CSV</h3>
+                                <div class="bg-blue-50 text-blue-800 text-sm p-4 rounded-md mb-4 border border-blue-100">
+                                    <p class="font-bold mb-2">Formato requerido del archivo .csv (separado por comas):</p>
+                                    <div class="font-mono bg-white p-2 rounded border border-blue-200 mb-3 overflow-x-auto whitespace-nowrap">
+                                        ID, Nombre, Optimista, Probable, Pesimista, Predecesores
+                                    </div>
+                                    <ul class="list-disc ml-5 space-y-1 text-blue-700">
+                                        <li><strong>ID:</strong> Identificador único de la tarea (ej. A).</li>
+                                        <li><strong>Nombre:</strong> Descripción (opcional).</li>
+                                        <li><strong>Optimista, Probable, Pesimista:</strong> Valores numéricos (pueden tener decimales).</li>
+                                        <li><strong>Predecesores:</strong> IDs separados por comas. Si hay varios, celda entre comillas (ej. <code class="bg-white px-1 border rounded">"A, B"</code>).</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="flex flex-wrap items-center gap-4">
+                                    <input type="file" id="input_csv" accept=".csv" class="hidden" onchange="procesarArchivoCSV(event)">
+                                    <button onclick="document.getElementById('input_csv').click()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-md shadow transition duration-150 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        Cargar archivo CSV
+                                    </button>
+                                    <button onclick="descargarPlantillaCSV()" class="text-sm text-indigo-600 hover:text-indigo-800 hover:underline font-medium">
+                                        Descargar plantilla
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Panel Derecho: Tabla de Tareas Registradas -->
+                <div class="xl:col-span-7 space-y-6 min-w-0">
+                    <section class="bg-white shadow-md rounded-lg p-6 h-full">
+                        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-4 border-b pb-2">
+                            <div class="flex items-center">
+                                <h2 class="text-xl font-semibold">Tareas Registradas</h2>
+                            </div>
+                            <div class="flex items-center gap-1 mt-2 xl:mt-0 zoom-controls">
+                                <button type="button" onclick="zoomPanel(this, -0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Reducir tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" /></svg>
+                                </button>
+                                <button type="button" onclick="zoomPanel(this, 0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Aumentar tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-content origin-top transition-transform" style="zoom: 1;">
+                            <div class="table-container rounded-lg border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left font-semibold text-gray-600">ID</th>
+                                            <th class="px-4 py-3 text-left font-semibold text-gray-600">Nombre</th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">T. Optimista</th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">T. Probable</th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">T. Pesimista</th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">Predecesores</th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla_tareas" class="divide-y divide-gray-200 bg-white">
+                                        <!-- Filas generadas por JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             PESTAÑA 2: RESULTADOS
+             ========================================== -->
+        <div id="tab-resultados" class="hidden">
+            
+            <!-- Mensaje visible cuando aún no hay cálculos -->
+            <div id="mensaje_vacio_resultados" class="flex flex-col items-center justify-center py-32 text-gray-400 bg-white rounded-lg shadow-sm border border-dashed border-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="text-2xl font-medium text-gray-500">Aún no hay resultados calculados</p>
+                <p class="mt-2 text-gray-400">Ve a la pestaña de "Gestión de Tareas" y pulsa el botón Calcular.</p>
+            </div>
+
+            <!-- Contenedor Principal de Resultados (2 Columnas) -->
+            <div id="contenedor_resultados_grid" class="hidden grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+                <!-- Columna Izquierda: Tabla de Resultados -->
+                <div class="space-y-6">
+                    <section id="seccion_resultados" class="bg-white shadow-md rounded-lg p-6 h-full">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b pb-2 gap-4">
+                            <div class="flex items-center">
+                                <h2 class="text-xl font-semibold">Resultados del Análisis</h2>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2 sm:mt-0 zoom-controls">
+                                <button type="button" onclick="zoomPanel(this, -0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Reducir tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" /></svg>
+                                </button>
+                                <button type="button" onclick="zoomPanel(this, 0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Aumentar tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                                </button>
+                                <button id="btn_exportar" onclick="exportarCSV()" class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold py-1.5 px-3 rounded shadow transition duration-150 flex items-center gap-2 ml-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Exportar a CSV
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-content origin-top transition-transform" style="zoom: 1;">
+                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                                <div class="flex flex-col md:flex-row md:justify-between items-start md:items-center">
+                                    <div>
+                                        <p class="text-sm text-blue-800 font-semibold uppercase tracking-wider">Duración Total Estimada</p>
+                                        <p id="lbl_duracion" class="text-3xl font-bold text-blue-900">--</p>
+                                    </div>
+                                    <div class="mt-4 md:mt-0 md:text-right">
+                                        <p class="text-sm text-red-800 font-semibold uppercase tracking-wider">Ruta Crítica</p>
+                                        <p id="lbl_ruta" class="text-xl font-bold text-red-600">--</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-container rounded-lg border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">ID</th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">Dur. Esp (TE)</th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">ES<br><span class="text-xs font-normal text-gray-400">Inicio Temp.</span></th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">EF<br><span class="text-xs font-normal text-gray-400">Fin Temp.</span></th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">LS<br><span class="text-xs font-normal text-gray-400">Inicio Tardío</span></th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">LF<br><span class="text-xs font-normal text-gray-400">Fin Tardío</span></th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">Holgura</th>
+                                            <th class="px-4 py-3 text-center font-semibold text-gray-600">¿Crítica?</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla_resultados" class="divide-y divide-gray-200 bg-white">
+                                        <!-- Filas generadas por JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Columna Derecha: Diagrama Red (Fila 1) y Gantt (Fila 2) -->
+                <div class="space-y-6 min-w-0">
+                    
+                    <!-- Fila 1: Diagrama PERT -->
+                    <section id="seccion_red" class="bg-white shadow-md rounded-lg p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b pb-2 gap-4">
+                            <div class="flex items-center">
+                                <h2 class="text-xl font-semibold">Diagrama de Red PERT</h2>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2 sm:mt-0 zoom-controls">
+                                <button type="button" onclick="zoomPanel(this, -0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Reducir tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" /></svg>
+                                </button>
+                                <button type="button" onclick="zoomPanel(this, 0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Aumentar tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                                </button>
+                                <button onclick="exportarPERTSVG()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold py-1.5 px-3 rounded border border-indigo-200 shadow-sm transition duration-150 flex items-center gap-2 ml-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Guardar SVG
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-content origin-top transition-transform" style="zoom: 1;">
+                            <div class="mb-4 text-sm text-gray-600 flex flex-wrap gap-4">
+                                <span class="flex items-center"><span class="w-4 h-4 bg-red-100 border-2 border-red-500 inline-block mr-2 rounded"></span> Ruta Crítica</span>
+                                <span class="flex items-center"><span class="w-4 h-4 bg-white border border-blue-500 inline-block mr-2 rounded"></span> Tarea Normal</span>
+                                <span class="ml-auto text-gray-400 italic">Puedes arrastrar los nodos y hacer zoom con la rueda del ratón.</span>
+                            </div>
+                            <div id="red_pert" class="w-full h-[500px] border border-gray-300 rounded-lg bg-slate-50 overflow-hidden shadow-inner"></div>
+                        </div>
+                    </section>
+
+                    <!-- Fila 2: Diagrama Gantt -->
+                    <section id="seccion_gantt" class="bg-white shadow-md rounded-lg p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b pb-2 gap-4">
+                            <div class="flex items-center">
+                                <h2 class="text-xl font-semibold">Diagrama de Gantt</h2>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2 sm:mt-0 zoom-controls">
+                                <button type="button" onclick="zoomPanel(this, -0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Reducir tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" /></svg>
+                                </button>
+                                <button type="button" onclick="zoomPanel(this, 0.1)" class="p-1 text-gray-500 hover:text-blue-600 rounded bg-gray-100 hover:bg-blue-200 transition-colors" title="Aumentar tamaño">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                                </button>
+                                <button onclick="exportarGanttSVG()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold py-1.5 px-3 rounded border border-indigo-200 shadow-sm transition duration-150 flex items-center gap-2 ml-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Guardar SVG
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-content origin-top transition-transform" style="zoom: 1;">
+                            <div class="mb-4 text-sm text-gray-600 flex flex-wrap gap-4">
+                                <span class="flex items-center"><span class="w-4 h-4 bg-red-500 inline-block mr-2 rounded"></span> Tarea Crítica</span>
+                                <span class="flex items-center"><span class="w-4 h-4 bg-blue-500 inline-block mr-2 rounded"></span> Tarea Normal</span>
+                                <span class="flex items-center"><span class="w-4 h-4 border-2 border-dashed border-gray-400 bg-gray-200 opacity-50 inline-block mr-2 rounded"></span> Holgura (Margen de retraso)</span>
+                            </div>
+                            <div class="overflow-x-auto pb-4">
+                                <div id="gantt_chart" class="min-w-[700px] w-full mt-4"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             PESTAÑA 3: AYUDA
+             ========================================== -->
+        <div id="tab-ayuda" class="hidden">
+            <div class="max-w-4xl mx-auto space-y-6">
+                <section class="bg-white shadow-md rounded-lg p-8">
+                    <h2 class="text-3xl font-bold text-blue-800 border-b-2 border-blue-100 pb-3 mb-6">Guía de Uso: Conceptos del PERT / CPM</h2>
+                    
+                    <div class="mb-8">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-2">¿Qué es el Diagrama PERT y el CPM?</h3>
+                        <p class="text-slate-600 leading-relaxed mb-4">
+                            Son dos métodos de gestión de proyectos que se utilizan de forma combinada. 
+                            <strong>PERT</strong> (<em>Program Evaluation and Review Technique</em>) se encarga de analizar las tareas involucradas y estimar su duración cuando hay incertidumbre. 
+                            <strong>CPM</strong> (<em>Critical Path Method</em> o Método de la Ruta Crítica) se utiliza para determinar la secuencia de tareas que dicta la duración total del proyecto.
+                        </p>
+                    </div>
+
+                    <div class="mb-8">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-3">Los 3 Tiempos de Estimación</h3>
+                        <p class="text-slate-600 mb-3">Para cada tarea, debes introducir tres valores de tiempo, lo que permite al algoritmo calcular un tiempo promedio realista:</p>
+                        <ul class="list-disc ml-6 space-y-2 text-slate-600">
+                            <li><strong class="text-slate-800">T. Optimista (o):</strong> El tiempo mínimo si todo sale perfecto.</li>
+                            <li><strong class="text-slate-800">T. Probable (m):</strong> El tiempo que tomaría en condiciones normales.</li>
+                            <li><strong class="text-slate-800">T. Pesimista (p):</strong> El tiempo máximo si surgen complicaciones.</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-8 bg-blue-50 rounded-xl p-6 border border-blue-100">
+                        <h3 class="text-xl font-bold text-blue-900 mb-4">Significado de los Valores en los Gráficos</h3>
+                        <p class="text-blue-800 mb-4">Cuando calculas el proyecto, la aplicación resuelve las siguientes variables matemáticas para cada nodo (tarea):</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded shadow-sm border-l-4 border-blue-400">
+                                <span class="font-bold text-blue-700 text-lg">TE</span> <span class="text-gray-500 text-sm ml-1">(Tiempo Esperado)</span>
+                                <p class="text-sm mt-1 text-slate-600">Duración promedio calculada usando la fórmula PERT: <br><code class="bg-gray-100 px-1 rounded text-xs">(Optimista + 4*Probable + Pesimista) / 6</code></p>
+                            </div>
+                            
+                            <div class="bg-white p-4 rounded shadow-sm border-l-4 border-indigo-400">
+                                <span class="font-bold text-indigo-700 text-lg">ES</span> <span class="text-gray-500 text-sm ml-1">(Earliest Start / Inicio Temprano)</span>
+                                <p class="text-sm mt-1 text-slate-600">Lo más pronto que la tarea puede empezar, esperando a que terminen sus predecesoras.</p>
+                            </div>
+                            
+                            <div class="bg-white p-4 rounded shadow-sm border-l-4 border-indigo-400">
+                                <span class="font-bold text-indigo-700 text-lg">EF</span> <span class="text-gray-500 text-sm ml-1">(Earliest Finish / Fin Temprano)</span>
+                                <p class="text-sm mt-1 text-slate-600">Lo más pronto que la tarea puede terminar. <br><code class="bg-gray-100 px-1 rounded text-xs">EF = ES + TE</code></p>
+                            </div>
+                            
+                            <div class="bg-white p-4 rounded shadow-sm border-l-4 border-purple-400">
+                                <span class="font-bold text-purple-700 text-lg">LS</span> <span class="text-gray-500 text-sm ml-1">(Latest Start / Inicio Tardío)</span>
+                                <p class="text-sm mt-1 text-slate-600">Lo más tarde que la tarea puede empezar <strong>sin retrasar el fin de todo el proyecto</strong>.</p>
+                            </div>
+                            
+                            <div class="bg-white p-4 rounded shadow-sm border-l-4 border-purple-400">
+                                <span class="font-bold text-purple-700 text-lg">LF</span> <span class="text-gray-500 text-sm ml-1">(Latest Finish / Fin Tardío)</span>
+                                <p class="text-sm mt-1 text-slate-600">Lo más tarde que la tarea puede terminar sin causar retrasos globales.</p>
+                            </div>
+                            
+                            <div class="bg-white p-4 rounded shadow-sm border-l-4 border-emerald-400">
+                                <span class="font-bold text-emerald-700 text-lg">Holgura</span> <span class="text-gray-500 text-sm ml-1">(Slack o Margen)</span>
+                                <p class="text-sm mt-1 text-slate-600">El tiempo que esta tarea puede retrasarse sin afectar al proyecto. <br><code class="bg-gray-100 px-1 rounded text-xs">Holgura = LS - ES</code></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-bold text-red-600 mb-3 flex items-center">
+                            <span class="w-4 h-4 bg-red-500 inline-block mr-2 rounded-full"></span> 
+                            ¿Qué es la Ruta Crítica?
+                        </h3>
+                        <p class="text-slate-600 leading-relaxed mb-2">
+                            La Ruta Crítica es la secuencia de tareas más larga de un proyecto. Está formada por todas aquellas tareas que tienen una <strong>Holgura = 0</strong>.
+                        </p>
+                        <p class="text-slate-600 leading-relaxed">
+                            Aparecen resaltadas en <strong>color rojo</strong> en la aplicación. Si cualquiera de las tareas críticas sufre un retraso, todo el proyecto sufrirá un retraso en la misma proporción. Por tanto, son las actividades que requieren más atención y vigilancia por parte del gestor del proyecto.
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+    </div> <!-- Fin Layout Principal -->
+
+    <!-- Modal para Alertas -->
+    <div id="modal_alerta" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl transform transition-all">
+            <h3 id="modal_titulo" class="text-lg font-bold text-gray-900 mb-2">Aviso</h3>
+            <p id="modal_mensaje" class="text-gray-600 mb-6 whitespace-pre-line">Mensaje de error.</p>
+            <div class="flex justify-end">
+                <button onclick="cerrarModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado global de la aplicación
+        let tareasData = {};
+        let network = null; 
+        let ultimoResultado = null; 
+        let ganttResizeObserver = null;
+        let currentGanttTareas = null;
+        let currentGanttDuracion = null;
+
+        // --- SISTEMA DE PESTAÑAS (TABS) ---
+        function switchTab(tabId) {
+            const tabs = ['gestion', 'resultados', 'ayuda'];
+
+            tabs.forEach(id => {
+                const btn = document.getElementById(`tab-btn-${id}`);
+                const tab = document.getElementById(`tab-${id}`);
+
+                if (id === tabId) {
+                    btn.className = "px-6 py-3 border-b-2 font-bold text-sm text-blue-600 border-blue-600 focus:outline-none transition-colors";
+                    tab.classList.remove('hidden');
+                } else {
+                    btn.className = "px-6 py-3 border-b-2 font-bold text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 focus:outline-none transition-colors";
+                    tab.classList.add('hidden');
+                }
+            });
+
+            if (tabId === 'resultados') {
+                // Asegurarnos de que los canvas SVG reconozcan el ancho de la pestaña al ser visibles
+                setTimeout(() => {
+                    if (network) {
+                        network.redraw();
+                        network.fit();
+                    }
+                    if (currentGanttTareas) {
+                        dibujarFlechasGantt();
+                    }
+                }, 50);
+            }
+        }
+
+        // --- ACERCAR/ALEJAR (ZOOM) ---
+        function zoomPanel(btn, delta) {
+            const section = btn.closest('section');
+            const content = section.querySelector('.panel-content');
+            if (!content) return;
+            
+            let currentZoom = parseFloat(content.style.zoom || 1);
+            let newZoom = currentZoom + delta;
+            
+            // Limitar el zoom entre 50% y 150%
+            if (newZoom < 0.5) newZoom = 0.5;
+            if (newZoom > 1.5) newZoom = 1.5;
+            
+            content.style.zoom = newZoom;
+            
+            // Recalcular gráficos si están en el panel de zoom
+            setTimeout(() => {
+                if (section.id === 'seccion_red' && network) {
+                    network.redraw();
+                }
+                if (section.id === 'seccion_gantt' && currentGanttTareas) {
+                    dibujarFlechasGantt();
+                }
+            }, 50);
+        }
+
+        function actualizarVistaGraficos() {
+            if (ultimoResultado) {
+                let duracionProyecto = Math.max(...Object.values(ultimoResultado).map(t => t.ef));
+                dibujarRed(ultimoResultado);
+                dibujarGantt(ultimoResultado, duracionProyecto);
+            }
+        }
+
+        function mostrarAlerta(titulo, mensaje) {
+            document.getElementById('modal_titulo').textContent = titulo;
+            document.getElementById('modal_mensaje').textContent = mensaje;
+            document.getElementById('modal_alerta').classList.remove('hidden');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal_alerta').classList.add('hidden');
+        }
+
+        // --- GESTIÓN DE LA INTERFAZ Y TAREAS ---
+        function limpiarFormulario() {
+            document.getElementById('ent_id').value = '';
+            document.getElementById('ent_nombre').value = '';
+            document.getElementById('ent_o').value = '';
+            document.getElementById('ent_m').value = '';
+            document.getElementById('ent_p').value = '';
+            document.getElementById('ent_preds').value = '';
+            document.getElementById('ent_id').focus();
+        }
+
+        function agregarTarea() {
+            const id = document.getElementById('ent_id').value.trim().toUpperCase();
+            const nombre = document.getElementById('ent_nombre').value.trim();
+            const predsStr = document.getElementById('ent_preds').value.trim().toUpperCase();
+            
+            const o = parseFloat(document.getElementById('ent_o').value);
+            const m = parseFloat(document.getElementById('ent_m').value);
+            const p = parseFloat(document.getElementById('ent_p').value);
+
+            if (!id) {
+                mostrarAlerta("Error de Entrada", "El campo 'ID Tarea' es obligatorio.");
+                return;
+            }
+
+            if (isNaN(o) || isNaN(m) || isNaN(p)) {
+                mostrarAlerta("Error de Entrada", "Los tiempos (Optimista, Probable, Pesimista) deben ser valores numéricos válidos.");
+                return;
+            }
+
+            let preds = [];
+            if (predsStr) {
+                preds = predsStr.split(',').map(x => x.trim()).filter(x => x.length > 0);
+            }
+
+            tareasData[id] = { id, nombre, o, m, p, preds };
+            
+            actualizarListaTareas();
+            limpiarFormulario();
+        }
+
+        function editarTarea(id) {
+            const t = tareasData[id];
+            if (!t) return;
+
+            document.getElementById('ent_id').value = t.id;
+            document.getElementById('ent_nombre').value = t.nombre;
+            document.getElementById('ent_o').value = t.o;
+            document.getElementById('ent_m').value = t.m;
+            document.getElementById('ent_p').value = t.p;
+            document.getElementById('ent_preds').value = t.preds.join(', ');
+
+            document.getElementById('ent_id').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('ent_id').focus();
+        }
+
+        function eliminarTarea(id) {
+            delete tareasData[id];
+            actualizarListaTareas();
+            limpiarResultados();
+        }
+
+        function borrarTodo() {
+            tareasData = {};
+            actualizarListaTareas();
+            limpiarResultados();
+        }
+
+        function actualizarListaTareas() {
+            const tbody = document.getElementById('tabla_tareas');
+            tbody.innerHTML = ''; 
+
+            const idsOrdenados = Object.keys(tareasData).sort();
+
+            idsOrdenados.forEach(id => {
+                const t = tareasData[id];
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50";
+                
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-gray-900">${t.id}</td>
+                    <td class="px-4 py-3 text-gray-700">${t.nombre}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.o}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.m}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.p}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.preds.length > 0 ? t.preds.join(', ') : '-'}</td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="editarTarea('${t.id}')" class="text-blue-500 hover:text-blue-700 p-1 rounded hover:bg-blue-50" title="Editar">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
+                            <button onclick="eliminarTarea('${t.id}')" class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50" title="Eliminar">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function limpiarResultados() {
+            document.getElementById('tabla_resultados').innerHTML = '';
+            document.getElementById('lbl_duracion').textContent = '--';
+            document.getElementById('lbl_ruta').textContent = '--';
+            
+            // Proteger contra nulos si se han borrado los divs
+            const msgVacio = document.getElementById('mensaje_vacio_resultados');
+            const contGrid = document.getElementById('contenedor_resultados_grid');
+            if (msgVacio && contGrid) {
+                msgVacio.classList.remove('hidden');
+                contGrid.classList.add('hidden');
+            }
+            ultimoResultado = null;
+        }
+
+        // --- LÓGICA MATEMÁTICA PERT / CPM ---
+        class TareaCalculada {
+            constructor(datos) {
+                this.id = datos.id;
+                this.nombre = datos.nombre;
+                this.predecesores = [...datos.preds];
+                this.sucesores = [];
+                
+                this.te = (datos.o + 4 * datos.m + datos.p) / 6;
+                this.es = 0; 
+                this.ef = 0; 
+                this.ls = 0; 
+                this.lf = 0; 
+                this.holgura = 0;
+                this.esCritica = false;
+            }
+        }
+
+        function calcularPERT() {
+            if (Object.keys(tareasData).length === 0) {
+                mostrarAlerta("Aviso", "No hay tareas registradas para calcular.");
+                return;
+            }
+
+            try {
+                let tareas = {};
+                for (let id in tareasData) {
+                    tareas[id] = new TareaCalculada(tareasData[id]);
+                }
+
+                for (let id in tareas) {
+                    for (let pred of tareas[id].predecesores) {
+                        if (!tareas[pred]) {
+                            throw new Error(`La tarea '${id}' depende de '${pred}', pero '${pred}' no existe.`);
+                        }
+                        tareas[pred].sucesores.push(id);
+                    }
+                }
+
+                let pendientes = Object.values(tareas);
+                let procesadas = new Set();
+
+                while (pendientes.length > 0) {
+                    let progreso = false;
+                    for (let i = 0; i < pendientes.length; i++) {
+                        let t = pendientes[i];
+                        if (t.predecesores.every(p => procesadas.has(p))) {
+                            if (t.predecesores.length === 0) {
+                                t.es = 0;
+                            } else {
+                                t.es = Math.max(...t.predecesores.map(p => tareas[p].ef));
+                            }
+                            t.ef = t.es + t.te;
+                            procesadas.add(t.id);
+                            pendientes.splice(i, 1);
+                            progreso = true;
+                            break;
+                        }
+                    }
+                    if (!progreso && pendientes.length > 0) {
+                        throw new Error("Dependencia circular detectada. Revisa los predecesores.");
+                    }
+                }
+
+                let duracionProyecto = Math.max(...Object.values(tareas).map(t => t.ef));
+
+                pendientes = Object.values(tareas);
+                let procesadasAtras = new Set();
+
+                while (pendientes.length > 0) {
+                    let progreso = false;
+                    for (let i = 0; i < pendientes.length; i++) {
+                        let t = pendientes[i];
+                        if (t.sucesores.every(s => procesadasAtras.has(s))) {
+                            if (t.sucesores.length === 0) {
+                                t.lf = duracionProyecto;
+                            } else {
+                                t.lf = Math.min(...t.sucesores.map(s => tareas[s].ls));
+                            }
+                            t.ls = t.lf - t.te;
+                            procesadasAtras.add(t.id);
+                            pendientes.splice(i, 1);
+                            progreso = true;
+                            break;
+                        }
+                    }
+                    if (!progreso && pendientes.length > 0) {
+                        throw new Error("Error lógico en el cálculo Backward Pass.");
+                    }
+                }
+
+                let rutaCritica = [];
+                for (let id in tareas) {
+                    let t = tareas[id];
+                    t.holgura = t.ls - t.es;
+                    if (Math.abs(t.holgura) < 1e-9) {
+                        t.esCritica = true;
+                        rutaCritica.push(t);
+                    }
+                }
+
+                rutaCritica.sort((a, b) => a.es - b.es);
+                let rutaString = rutaCritica.map(t => t.id).join(' ➔ ');
+
+                // Ocultar mensaje vacío y mostrar cuadrícula
+                document.getElementById('mensaje_vacio_resultados').classList.add('hidden');
+                document.getElementById('contenedor_resultados_grid').classList.remove('hidden');
+
+                // Ir automáticamente a la pestaña resultados
+                switchTab('resultados');
+
+                // Mostrar datos
+                mostrarResultados(tareas, duracionProyecto, rutaString);
+                dibujarRed(tareas);
+                dibujarGantt(tareas, duracionProyecto);
+
+                ultimoResultado = tareas;
+
+            } catch (error) {
+                mostrarAlerta("Error en el Cálculo", error.message);
+            }
+        }
+
+        function mostrarResultados(tareas, duracion, rutaString) {
+            document.getElementById('lbl_duracion').textContent = duracion.toFixed(2) + ' ud. tiempo';
+            document.getElementById('lbl_ruta').textContent = rutaString;
+
+            const tbody = document.getElementById('tabla_resultados');
+            tbody.innerHTML = '';
+            
+            const idsOrdenados = Object.keys(tareas).sort();
+            idsOrdenados.forEach(id => {
+                const t = tareas[id];
+                const tr = document.createElement('tr');
+                
+                if (t.esCritica) {
+                    tr.className = "bg-red-50 hover:bg-red-100 font-medium";
+                } else {
+                    tr.className = "hover:bg-gray-50";
+                }
+                
+                const spanCritica = t.esCritica 
+                    ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">SÍ</span>` 
+                    : `<span class="text-gray-400">No</span>`;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-center text-gray-900 font-bold">${t.id}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.te.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.es.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.ef.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.ls.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.lf.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-center text-gray-700">${t.holgura.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-center">${spanCritica}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- IMPORTACIÓN / EXPORTACIÓN CSV ---
+        function exportarCSV() {
+            if (!ultimoResultado) return;
+            let csvContent = "ID,Nombre,T. Optimista,T. Probable,T. Pesimista,Predecesores,Duracion (TE),Inicio Temprano (ES),Fin Temprano (EF),Inicio Tardio (LS),Fin Tardio (LF),Holgura,Critica\n";
+            
+            const idsOrdenados = Object.keys(ultimoResultado).sort();
+            idsOrdenados.forEach(id => {
+                const t = ultimoResultado[id];
+                const input = tareasData[id];
+                const nombre = `"${t.nombre.replace(/"/g, '""')}"`;
+                const predsStr = `"${input.preds.join(', ')}"`;
+                const critica = t.esCritica ? "SI" : "NO";
+                
+                const fila = [
+                    t.id, nombre, input.o, input.m, input.p, predsStr, 
+                    t.te.toFixed(2), t.es.toFixed(2), t.ef.toFixed(2), 
+                    t.ls.toFixed(2), t.lf.toFixed(2), t.holgura.toFixed(2), critica
+                ];
+                csvContent += fila.join(",") + "\n";
+            });
+            
+            descargarArchivo("\uFEFF" + csvContent, 'analisis_pert_cpm.csv', 'text/csv;charset=utf-8;');
+        }
+
+        function descargarPlantillaCSV() {
+            const contenido = "ID,Nombre,T. Optimista,T. Probable,T. Pesimista,Predecesores\n" +
+                              "A,Diseño Inicial,2,4,6,\n" +
+                              "B,Obtención de piezas,3,5,9,\"A\"\n" +
+                              "C,Construcción,4,5,7,\"A\"\n" +
+                              "D,Pruebas,2,3,5,\"B, C\"\n" +
+                              "E,Documentación,1,2,3,\"C\"\n" +
+                              "F,Despliegue final,1,1,1,\"D, E\"";
+            descargarArchivo("\uFEFF" + contenido, 'plantilla_pert.csv', 'text/csv;charset=utf-8;');
+        }
+
+        function procesarArchivoCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) { 
+                parsearCSV(e.target.result); 
+                event.target.value = ''; 
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parsearCSV(texto) {
+            const lineas = texto.split(/\r?\n/);
+            if (lineas.length === 0) return;
+            
+            let tareasNuevas = {};
+            let errores = 0;
+            let importadas = 0;
+            
+            let inicio = 0;
+            if (lineas[0].toLowerCase().includes("id") || lineas[0].toLowerCase().includes("optimista")) {
+                inicio = 1;
+            }
+
+            for (let i = inicio; i < lineas.length; i++) {
+                const linea = lineas[i].trim();
+                if (!linea) continue;
+                
+                const valores = linea.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').trim());
+                if (valores.length < 5) { errores++; continue; }
+
+                const id = valores[0].toUpperCase();
+                const nombre = valores[1] || "";
+                const o = parseFloat(valores[2]);
+                const m = parseFloat(valores[3]);
+                const p = parseFloat(valores[4]);
+                const predsStr = valores[5] ? valores[5].toUpperCase() : "";
+
+                if (!id || isNaN(o) || isNaN(m) || isNaN(p)) { errores++; continue; }
+
+                let preds = [];
+                if (predsStr && predsStr !== '-') {
+                    preds = predsStr.split(',').map(x => x.trim()).filter(x => x.length > 0);
+                }
+
+                tareasNuevas[id] = { id, nombre, o, m, p, preds };
+                importadas++;
+            }
+
+            if (importadas > 0) {
+                tareasData = { ...tareasData, ...tareasNuevas };
+                actualizarListaTareas();
+                limpiarResultados();
+                
+                let msg = `Se han importado ${importadas} tareas correctamente.`;
+                if (errores > 0) {
+                    msg += `\n\nSe han omitido ${errores} filas por tener un formato incorrecto o datos incompletos.`;
+                }
+                mostrarAlerta("Importación completada", msg);
+            } else {
+                mostrarAlerta("Error de Importación", "No se encontró ninguna tarea válida en el archivo CSV. Por favor, revisa el formato.");
+            }
+        }
+
+        // --- DIBUJAR DIAGRAMA DE RED ---
+        function dibujarRed(tareas) {
+            const container = document.getElementById('red_pert');
+            const mostrarId = document.getElementById('chk_mostrar_id').checked;
+            
+            const nodes = [];
+            const edges = [];
+
+            const f = (val) => (Math.abs(val) < 1e-9 ? 0 : val).toFixed(2);
+
+            for (let id in tareas) {
+                const t = tareas[id];
+                
+                let tituloTarea = "";
+                if (mostrarId) {
+                    tituloTarea = t.nombre ? `${t.id} - ${t.nombre}` : t.id;
+                } else {
+                    tituloTarea = t.nombre ? t.nombre : t.id; 
+                }
+
+                const label = `Tarea: ${tituloTarea}\n` +
+                              `TE: ${f(t.te)}\n` +
+                              `ES: ${f(t.es)} | EF: ${f(t.ef)}\n` +
+                              `LS: ${f(t.ls)} | LF: ${f(t.lf)}\n` +
+                              `Holgura: ${f(t.holgura)}`;
+                
+                nodes.push({
+                    id: t.id, 
+                    label: label, 
+                    shape: 'box',
+                    font: { face: 'monospace', align: 'left', size: 13 },
+                    color: {
+                        background: t.esCritica ? '#fee2e2' : '#ffffff',
+                        border: t.esCritica ? '#ef4444' : '#3b82f6',
+                        highlight: { background: t.esCritica ? '#fca5a5' : '#eff6ff', border: t.esCritica ? '#dc2626' : '#2563eb' }
+                    },
+                    borderWidth: t.esCritica ? 2 : 1, 
+                    margin: 10
+                });
+
+                for (let pred of t.predecesores) {
+                    const isCriticalEdge = t.esCritica && tareas[pred].esCritica && Math.abs(tareas[pred].ef - t.es) < 1e-9;
+                    edges.push({
+                        from: pred, 
+                        to: t.id, 
+                        arrows: 'to',
+                        color: { color: isCriticalEdge ? '#ef4444' : '#9ca3af', highlight: isCriticalEdge ? '#dc2626' : '#6b7280' }, 
+                        width: isCriticalEdge ? 3 : 1.5
+                    });
+                }
+            }
+
+            const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+            
+            const options = { 
+                layout: { 
+                    hierarchical: { direction: 'LR', sortMethod: 'directed', levelSeparation: 250, nodeSpacing: 120 } 
+                }, 
+                physics: false, 
+                interaction: { dragNodes: true, zoomView: true, dragView: true } 
+            };
+            
+            if (network !== null) {
+                network.destroy();
+            }
+            network = new vis.Network(container, data, options);
+        }
+
+        // --- DIBUJAR DIAGRAMA DE GANTT ---
+        function dibujarGantt(tareas, duracion) {
+            const container = document.getElementById('gantt_chart');
+            
+            const mostrarId = document.getElementById('chk_mostrar_id').checked;
+            const mostrarTextoGantt = document.getElementById('chk_mostrar_texto_gantt').checked;
+            
+            container.innerHTML = '';
+
+            const d = duracion > 0 ? duracion : 1;
+            const tareasArray = Object.values(tareas).sort((a, b) => a.es - b.es);
+            
+            currentGanttTareas = tareasArray;
+            currentGanttDuracion = d;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = "relative flex flex-col w-full";
+
+            // 1. Cabecera Escala
+            const scaleHeader = document.createElement('div');
+            scaleHeader.className = "flex border-b border-gray-400 pb-2 mb-2 ml-[12rem] relative h-6";
+            
+            let step = Math.max(1, Math.ceil(d / 20));
+            for (let i = 0; i <= Math.ceil(d); i += step) {
+                const mark = document.createElement('div');
+                mark.className = "absolute text-xs text-gray-500 font-bold -translate-x-1/2";
+                mark.style.left = `${(i / d) * 100}%`; 
+                mark.innerText = i;
+                scaleHeader.appendChild(mark);
+            }
+            wrapper.appendChild(scaleHeader);
+
+            // 2. Fondo cuadriculado
+            const gridBackground = document.createElement('div');
+            gridBackground.className = "absolute top-8 bottom-0 left-[12rem] right-0 pointer-events-none z-0";
+            
+            for (let i = 0; i <= Math.ceil(d); i += step) {
+                const line = document.createElement('div');
+                line.className = "absolute top-0 bottom-0 border-l border-gray-200";
+                line.style.left = `${(i / d) * 100}%`;
+                gridBackground.appendChild(line);
+            }
+            wrapper.appendChild(gridBackground);
+
+            // 3. Capa SVG transparente para las flechas de conexión
+            const svgOverlay = document.createElement('div');
+            svgOverlay.className = "absolute top-8 bottom-0 left-[12rem] right-0 pointer-events-none z-20 overflow-visible";
+            svgOverlay.innerHTML = `
+                <svg id="gantt_arrows_svg" width="100%" height="100%" class="overflow-visible">
+                    <defs>
+                        <marker id="arrow-normal-gantt" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280" />
+                        </marker>
+                        <marker id="arrow-critical-gantt" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                        </marker>
+                    </defs>
+                    <g id="gantt_paths_group"></g>
+                </svg>
+            `;
+            wrapper.appendChild(svgOverlay);
+
+            // 4. Filas y Barras de Tareas HTML
+            tareasArray.forEach(t => {
+                const row = document.createElement('div');
+                row.className = "flex items-center mb-3 h-8 relative z-10 hover:bg-gray-50 transition-colors";
+
+                let textoEtiqueta = "";
+                if (mostrarId) {
+                    textoEtiqueta = t.nombre ? `${t.id} - ${t.nombre}` : t.id;
+                } else {
+                    textoEtiqueta = t.nombre ? t.nombre : t.id;
+                }
+
+                const label = document.createElement('div');
+                label.className = "w-[12rem] flex-shrink-0 text-sm font-semibold text-gray-700 truncate pr-4 text-right bg-white bg-opacity-80";
+                label.innerText = textoEtiqueta; 
+                label.title = label.innerText;
+                row.appendChild(label);
+
+                const timeline = document.createElement('div');
+                timeline.className = "flex-grow relative h-full border-l border-gray-300";
+
+                const bar = document.createElement('div');
+                const barColor = t.esCritica ? 'bg-red-500' : 'bg-blue-500';
+                bar.className = `absolute h-full rounded shadow flex items-center justify-center text-xs text-white font-bold transition-transform overflow-hidden px-1 whitespace-nowrap cursor-help ${barColor}`;
+                bar.style.left = `${(t.es / d) * 100}%`;
+                bar.style.width = `${(t.te / d) * 100}%`;
+                bar.title = `Tarea ${t.id}\nInicio (ES): ${t.es.toFixed(2)}\nFin (EF): ${t.ef.toFixed(2)}\nDuración (TE): ${t.te.toFixed(2)}`;
+                
+                if (mostrarTextoGantt && ((t.te / d) * 100 > 3)) {
+                    bar.innerText = mostrarId ? t.id : (t.nombre ? t.nombre : t.id);
+                }
+                timeline.appendChild(bar);
+
+                // Holgura
+                if (t.holgura > 0) {
+                    const slackBar = document.createElement('div');
+                    slackBar.className = "absolute h-full top-0 border-2 border-dashed border-gray-400 bg-gray-200 opacity-50 rounded cursor-help";
+                    slackBar.style.left = `${(t.ef / d) * 100}%`; 
+                    slackBar.style.width = `${(t.holgura / d) * 100}%`;
+                    slackBar.title = `Holgura de ${t.id}: ${t.holgura.toFixed(2)} uds.\nFin Tardío (LF): ${t.lf.toFixed(2)}`;
+                    timeline.appendChild(slackBar);
+                }
+
+                row.appendChild(timeline);
+                wrapper.appendChild(row);
+            });
+
+            container.appendChild(wrapper);
+
+            setTimeout(dibujarFlechasGantt, 0);
+
+            if (!ganttResizeObserver) {
+                ganttResizeObserver = new ResizeObserver(() => { dibujarFlechasGantt(); });
+                ganttResizeObserver.observe(container);
+            }
+        }
+
+        function dibujarFlechasGantt() {
+            const svg = document.getElementById('gantt_arrows_svg');
+            const pathsGroup = document.getElementById('gantt_paths_group');
+            const mostrarFlechas = document.getElementById('chk_mostrar_flechas_gantt').checked;
+            
+            if (!svg || !pathsGroup || !currentGanttTareas) return;
+            
+            if (!mostrarFlechas) { 
+                pathsGroup.innerHTML = ''; 
+                return; 
+            }
+
+            const svgWidth = svg.clientWidth || svg.getBoundingClientRect().width;
+            if (svgWidth <= 0) return;
+
+            const pxPerUnit = svgWidth / currentGanttDuracion;
+            const rowHeight = 44; 
+            const barCenterOffset = 16; 
+
+            const taskIndices = {};
+            currentGanttTareas.forEach((t, i) => { taskIndices[t.id] = i; });
+
+            let pathsHtml = '';
+
+            currentGanttTareas.forEach(tS => {
+                tS.predecesores.forEach(predId => {
+                    const tP = currentGanttTareas.find(x => x.id === predId);
+                    if (!tP) return;
+
+                    const idxP = taskIndices[predId];
+                    const idxS = taskIndices[tS.id];
+                    
+                    const x1 = tP.ef * pxPerUnit; 
+                    const y1 = idxP * rowHeight + barCenterOffset;
+                    
+                    const x2 = tS.es * pxPerUnit; 
+                    const y2 = idxS * rowHeight + barCenterOffset;
+
+                    const isCritical = tP.esCritica && tS.esCritica && Math.abs(tP.ef - tS.es) < 1e-9;
+                    const color = isCritical ? '#ef4444' : '#6b7280';
+                    const strokeWidth = isCritical ? 2.5 : 1.5;
+                    const marker = isCritical ? 'url(#arrow-critical-gantt)' : 'url(#arrow-normal-gantt)';
+
+                    let path = '';
+                    
+                    if (x2 - x1 >= 15) {
+                        const midX = x1 + (x2 - x1) / 2;
+                        path = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2 - 2} ${y2}`;
+                    } else {
+                        const drop = (y2 >= y1) ? 1 : -1;
+                        const midY = y2 - 22 * drop; 
+                        path = `M ${x1} ${y1} L ${x1 + 10} ${y1} L ${x1 + 10} ${midY} L ${x2 - 10} ${midY} L ${x2 - 10} ${y2} L ${x2 - 2} ${y2}`;
+                    }
+
+                    pathsHtml += `<path d="${path}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" marker-end="${marker}" stroke-linejoin="round" class="transition-all duration-300" />`;
+                });
+            });
+            pathsGroup.innerHTML = pathsHtml;
+        }
+
+        // --- EXPORTACIÓN DE GRÁFICOS A ARCHIVOS NATIVOS SVG ---
+        function descargarArchivo(contenido, nombreArchivo, mimeType) {
+            const blob = new Blob([contenido], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url; 
+            link.download = nombreArchivo;
+            document.body.appendChild(link); 
+            link.click();
+            document.body.removeChild(link); 
+            URL.revokeObjectURL(url);
+        }
+
+        function exportarGanttSVG() {
+            if (!ultimoResultado) return;
+            
+            const duracion = Math.max(...Object.values(ultimoResultado).map(t => t.ef));
+            const d = duracion > 0 ? duracion : 1;
+            const tareasArray = Object.values(ultimoResultado).sort((a, b) => a.es - b.es);
+            
+            const mostrarId = document.getElementById('chk_mostrar_id').checked;
+            const mostrarTexto = document.getElementById('chk_mostrar_texto_gantt').checked;
+            const mostrarFlechas = document.getElementById('chk_mostrar_flechas_gantt').checked;
+
+            const rowHeight = 40;
+            const headerHeight = 40;
+            const labelWidth = 200;
+            const chartWidth = 800;
+            
+            const totalWidth = labelWidth + chartWidth + 20;
+            const totalHeight = headerHeight + (tareasArray.length * rowHeight) + 20;
+
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidth} ${totalHeight}" width="${totalWidth}" height="${totalHeight}">
+                <style>
+                    .text-label { font-family: sans-serif; font-size: 14px; fill: #374151; font-weight: 600; }
+                    .text-bar { font-family: sans-serif; font-size: 12px; fill: white; font-weight: bold; }
+                    .text-scale { font-family: sans-serif; font-size: 12px; fill: #6b7280; font-weight: bold; }
+                    .grid-line { stroke: #e5e7eb; stroke-width: 1; }
+                    .axis-line { stroke: #9ca3af; stroke-width: 1; }
+                </style>
+                <defs>
+                    <marker id="arrow-normal-exp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
+                    </marker>
+                    <marker id="arrow-critical-exp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                    </marker>
+                </defs>
+                <rect width="100%" height="100%" fill="white" />`;
+
+            // Escala y Cuadricula
+            svg += `<line x1="${labelWidth}" y1="${headerHeight - 10}" x2="${labelWidth + chartWidth}" y2="${headerHeight - 10}" class="axis-line" />`;
+            let step = Math.max(1, Math.ceil(d / 20));
+            for (let i = 0; i <= Math.ceil(d); i += step) {
+                let x = labelWidth + (i / d) * chartWidth;
+                svg += `<text x="${x}" y="${headerHeight - 15}" text-anchor="middle" class="text-scale">${i}</text>`;
+                svg += `<line x1="${x}" y1="${headerHeight}" x2="${x}" y2="${totalHeight - 10}" class="grid-line" />`;
+            }
+
+            // Flechas en Exportación
+            if (mostrarFlechas) {
+                const taskIdx = {};
+                tareasArray.forEach((t, i) => { taskIdx[t.id] = i; });
+                
+                tareasArray.forEach(tS => {
+                    tS.predecesores.forEach(predId => {
+                        const tP = tareasArray.find(x => x.id === predId);
+                        if (!tP) return;
+
+                        const x1 = labelWidth + (tP.ef / d) * chartWidth;
+                        const y1 = headerHeight + taskIdx[predId] * rowHeight + 18;
+                        const x2 = labelWidth + (tS.es / d) * chartWidth;
+                        const y2 = headerHeight + taskIdx[tS.id] * rowHeight + 18;
+
+                        const isCrit = tP.esCritica && tS.esCritica && Math.abs(tP.ef - tS.es) < 1e-9;
+                        const col = isCrit ? '#ef4444' : '#9ca3af';
+                        const w = isCrit ? 2.5 : 1.5;
+                        const mark = isCrit ? 'url(#arrow-critical-exp)' : 'url(#arrow-normal-exp)';
+
+                        let path = '';
+                        if (x2 - x1 >= 15) {
+                            const mx = x1 + (x2 - x1) / 2;
+                            path = `M ${x1} ${y1} L ${mx} ${y1} L ${mx} ${y2} L ${x2 - 2} ${y2}`;
+                        } else {
+                            const drop = (y2 >= y1) ? 1 : -1;
+                            const my = y2 - (rowHeight / 2) * drop;
+                            path = `M ${x1} ${y1} L ${x1 + 10} ${y1} L ${x1 + 10} ${my} L ${x2 - 10} ${my} L ${x2 - 10} ${y2} L ${x2 - 2} ${y2}`;
+                        }
+                        svg += `<path d="${path}" fill="none" stroke="${col}" stroke-width="${w}" marker-end="${mark}" stroke-linejoin="round" />`;
+                    });
+                });
+            }
+
+            // Barras y Textos en Exportación
+            tareasArray.forEach((t, index) => {
+                let y = headerHeight + (index * rowHeight);
+                let textoEtiqueta = "";
+                
+                if (mostrarId) {
+                    textoEtiqueta = t.nombre ? `${t.id} - ${t.nombre}` : t.id;
+                } else {
+                    textoEtiqueta = t.nombre ? t.nombre : t.id;
+                }
+
+                svg += `<text x="${labelWidth - 15}" y="${y + 24}" text-anchor="end" class="text-label">${textoEtiqueta}</text>`;
+
+                let xBar = labelWidth + (t.es / d) * chartWidth;
+                let wBar = Math.max((t.te / d) * chartWidth, 2);
+                
+                svg += `<rect x="${xBar}" y="${y + 5}" width="${wBar}" height="26" rx="4" fill="${t.esCritica ? '#ef4444' : '#3b82f6'}" />`;
+
+                if (mostrarTexto && ((t.te / d) * 100 > 3)) {
+                    let textBar = mostrarId ? t.id : (t.nombre ? t.nombre : t.id);
+                    svg += `<text x="${xBar + wBar / 2}" y="${y + 22}" text-anchor="middle" class="text-bar">${textBar}</text>`;
+                }
+
+                if (t.holgura > 0) {
+                    let xSlack = labelWidth + (t.ef / d) * chartWidth;
+                    let wSlack = (t.holgura / d) * chartWidth;
+                    svg += `<rect x="${xSlack}" y="${y + 5}" width="${wSlack}" height="26" rx="4" fill="#e5e7eb" fill-opacity="0.5" stroke="#9ca3af" stroke-width="2" stroke-dasharray="4" />`;
+                }
+            });
+
+            descargarArchivo(svg + `</svg>`, 'diagrama_gantt.svg', 'image/svg+xml');
+        }
+
+        function exportarPERTSVG() {
+            if (!network || !ultimoResultado) return;
+            
+            const pos = network.getPositions();
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            const nodesData = [];
+
+            for (let id in ultimoResultado) {
+                let box = network.getBoundingBox(id);
+                if (!box) continue;
+                
+                minX = Math.min(minX, box.left); 
+                minY = Math.min(minY, box.top);
+                maxX = Math.max(maxX, box.right); 
+                maxY = Math.max(maxY, box.bottom);
+                
+                nodesData.push({ id, box, pos: pos[id], t: ultimoResultado[id] });
+            }
+
+            const pad = 60; 
+            minX -= pad; 
+            minY -= pad; 
+            maxX += pad; 
+            maxY += pad;
+            
+            const width = maxX - minX;
+            const height = maxY - minY;
+            
+            const mostrarId = document.getElementById('chk_mostrar_id').checked;
+            const f = (val) => (Math.abs(val) < 1e-9 ? 0 : val).toFixed(2);
+
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}">
+                <style>.node-text { font-family: monospace; font-size: 13px; fill: #1f2937; }</style>
+                <defs>
+                    <marker id="arrow-n" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
+                    </marker>
+                    <marker id="arrow-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                    </marker>
+                </defs>
+                <rect x="${minX}" y="${minY}" width="100%" height="100%" fill="#f8fafc" />`;
+
+            for (let id in ultimoResultado) {
+                let t = ultimoResultado[id];
+                for (let predId of t.predecesores) {
+                    if (!pos[predId] || !pos[t.id]) continue;
+                    
+                    const isCrit = t.esCritica && ultimoResultado[predId].esCritica && Math.abs(ultimoResultado[predId].ef - t.es) < 1e-9;
+                    
+                    let tb = network.getBoundingBox(t.id);
+                    let pb = network.getBoundingBox(predId);
+                    
+                    let dx = pos[t.id].x - pos[predId].x;
+                    let dy = pos[t.id].y - pos[predId].y;
+                    
+                    let sx = pb.right;
+                    let sy = pos[predId].y + dy * ((pb.right - pos[predId].x) / dx);
+                    
+                    let ex = tb.left - 8;
+                    let ey = pos[predId].y + dy * ((tb.left - 8 - pos[predId].x) / dx);
+
+                    svg += `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${isCrit ? '#ef4444' : '#9ca3af'}" stroke-width="${isCrit ? 3 : 1.5}" marker-end="url(${isCrit ? '#arrow-c' : '#arrow-n'})" />`;
+                }
+            }
+
+            nodesData.forEach(nd => {
+                let { box, t } = nd;
+                let w = box.right - box.left;
+                let h = box.bottom - box.top;
+                
+                svg += `<rect x="${box.left}" y="${box.top}" width="${w}" height="${h}" fill="${t.esCritica ? '#fee2e2' : '#ffffff'}" stroke="${t.esCritica ? '#ef4444' : '#3b82f6'}" stroke-width="${t.esCritica ? 2 : 1}" rx="5" />`;
+                
+                let tituloTarea = "";
+                if (mostrarId) {
+                    tituloTarea = t.nombre ? `${t.id} - ${t.nombre}` : t.id;
+                } else {
+                    tituloTarea = t.nombre ? t.nombre : t.id;
+                }
+
+                let textLines = [
+                    `Tarea: ${tituloTarea}`, 
+                    `TE: ${f(t.te)}`, 
+                    `ES: ${f(t.es)} | EF: ${f(t.ef)}`, 
+                    `LS: ${f(t.ls)} | LF: ${f(t.lf)}`, 
+                    `Holgura: ${f(t.holgura)}`
+                ];
+                
+                let textY = box.top + 22;
+                textLines.forEach(line => {
+                    let textEscaped = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    svg += `<text x="${box.left + 12}" y="${textY}" class="node-text">${textEscaped}</text>`;
+                    textY += 16;
+                });
+            });
+
+            descargarArchivo(svg + `</svg>`, 'diagrama_pert.svg', 'image/svg+xml');
+        }
+
+        // --- INICIALIZACIÓN POR DEFECTO ---
+        window.onload = function() {
+            const ejemplo = [
+                { id: 'A', nombre: 'Diseño Inicial', o: 2, m: 4, p: 6, preds: [] },
+                { id: 'B', nombre: 'Obtención de piezas', o: 3, m: 5, p: 9, preds: ['A'] },
+                { id: 'C', nombre: 'Construcción', o: 4, m: 5, p: 7, preds: ['A'] },
+                { id: 'D', nombre: 'Pruebas', o: 2, m: 3, p: 5, preds: ['B', 'C'] },
+                { id: 'E', nombre: 'Documentación', o: 1, m: 2, p: 3, preds: ['C'] },
+                { id: 'F', nombre: 'Despliegue final', o: 1, m: 1, p: 1, preds: ['D', 'E'] }
+            ];
+            
+            ejemplo.forEach(t => {
+                tareasData[t.id] = t;
+            });
+            
+            actualizarListaTareas();
+        };
+
+    </script>
+</body>
+</html>
