@@ -53,10 +53,19 @@ Todo el sistema está contenido en un único archivo index.html, lo que signific
 * **Diagrama de Gantt:** Gráfico construido de forma nativa superponiendo barras HTML sobre una cuadrícula de tiempo. Incluye flechas direccionales (SVG) que conectan las tareas dependientes y sombreado para visualizar las holguras.  
 * **Exportación a SVG:** Posibilidad de guardar tanto el diagrama PERT como el diagrama de Gantt en formato de imagen vectorial (.svg), conservando la máxima calidad para presentaciones.
 
+
 ### **🖥️ Interfaz de Usuario (UI/UX)**
 
 * **Sistema de Pestañas (Tabs):** Organización en tres secciones limpias: "Gestión de Tareas", "Resultados" y "Ayuda".  
+
+|Gestión de Tareas|Resultados|Ayuda|
+|---|---|---|
+|![g](./anexos/gestiontareas.png)|![g](./anexos/resultados.png)|![g](./anexos/ayuda.png)
+
 * **Controles Visuales (Checkboxes):** Permiten al usuario mostrar/ocultar los IDs, ocultar los textos dentro de las barras del Gantt o esconder las flechas de conexión para limpiar la vista.  
+
+![g](./anexos/checkbox.png)
+
 * **Zoom de Paneles:** Botones de lupa (+ y \-) en las cabeceras de cada sección para ampliar o reducir el contenido a gusto del usuario.  
 * **Adaptación a Impresión:** Reglas CSS específicas (@media print) para garantizar que al imprimir (Ctrl+P) se mantengan los colores (rojo/azul) y se oculten elementos innecesarios como botones.
 
