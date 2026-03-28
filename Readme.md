@@ -18,6 +18,7 @@ Todo el sistema está contenido en un único archivo index.html, lo que signific
 
 * **Entrada de datos:** Formulario para introducir el ID de la tarea, Nombre, Tiempos (Optimista, Probable y Pesimista) y Dependencias (Predecesores).  
 * **Edición y Borrado:** Capacidad de editar tareas existentes recuperando sus datos en el formulario, o eliminarlas individualmente/en bloque.  
+* **Cargar archivo .CSV:** Permite cargar un archivo .csv con los datos y relaciones de las tareas.  
 * **Tabla Reactiva:** Visualización en tiempo real de todas las tareas registradas antes de proceder al cálculo.
 
 ![gestión de tareas](./anexos/gestion.png)
@@ -31,11 +32,20 @@ Todo el sistema está contenido en un único archivo index.html, lo que signific
 * **Holgura:** Determina el margen de retraso de cada tarea (LS \- ES). Las tareas con holgura cero conforman la **Ruta Crítica**.  
 * **Protección de Errores:** Detección de dependencias circulares y referencias a tareas inexistentes.
 
+![calcular Pert/CPM](./anexos/calcular.png)
+
 ### **📥 Importación y Exportación**
 
 * **Exportar a CSV:** Genera un archivo .csv compatible con Excel que incluye todos los datos introducidos y los resultados calculados.  
 * **Importar desde CSV:** Permite cargar proyectos enteros leyendo archivos .csv con un formato específico, ignorando cabeceras y manejando dependencias múltiples entre comillas.  
 * **Plantilla de descarga:** Facilita al usuario un archivo CSV base para rellenar.
+
+
+|importar|exportar|
+|---|---|
+|![importar](./anexos/importar)|[!exportar](./anexos/exportar.png)|
+
+
 
 ### **🎨 Visualización y Gráficos**
 
