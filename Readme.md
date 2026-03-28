@@ -87,35 +87,6 @@ El proyecto está estructurado de la siguiente forma en el archivo index.html:
    * Funciones de renderizado gráfico (dibujarRed(), dibujarGantt(), dibujarFlechasGantt()).  
    * Funciones de exportación SVG (exportarPERTSVG(), exportarGanttSVG()).
 
-## **4\. Historial de Desarrollo (Prompts utilizados)**
-
-El desarrollo del proyecto se llevó a cabo de forma progresiva e iterativa respondiendo a las siguientes peticiones (prompts):
-
-1. *Haz un script en python para calcular el diagrama de pert*  
-2. *Añadele un entorno visua*  
-3. *hazlo en formato html y javascript* (Conversión a plataforma Web)  
-4. *Añade que se pueda ver el diagrama de la red del pert, marcando la ruta crítica.*  
-5. *Añade tambien un diagrama gantt*  
-6. *Añade un botón para exportar toda la información a un archivos .csv*  
-7. *Al imprimir la pagina web, el diagrama de gant no sale coloreado. Revisalo*  
-8. *Añade un botón para poder registrar las tareas desde un fichero csv...*  
-9. *Verifica que los calculos de los distintos valores del pert son correctos.*  
-10. *Quiero que en el diagrama pert, aparezca tambien el nombre de la actividad.*  
-11. *Haz que sea opcional (con un checkbox) que se ponga o no el ID en los gráficos del pert y en el diagrama de gantt*  
-12. *Que tambien opcional que aparezca el nombre de la actividad en las barras del diagrama de gantt*  
-13. *Quiero que haya un botón para guardar tanto el diagrama de red pert como el diagrama de gantt en formato .svg*  
-14. *Quiero que, ademas de la acción Borrar, podamos editar una tarea mediante un formulario.*  
-15. *Quiero que en el titulo... pongas: "Autor: Julio Sánchez Berro"*  
-16. *dame una lista de todos los prompt que he usado en esta conversación.*  
-17. *Quiero que al diagrama de gantt, le añada flechas que unan las actividades...*  
-18. *revisa el código, parece que te has olvidado de parte.* (Unificación del código)  
-19. *Quiero que organices los paneles de la aplilcación como la imagen adjunta.* (Maquetación 2 columnas)  
-20. *Añada que se puedan poner 3 columnas, ahora esta fija en 2*  
-21. *añade que se pueda cambiar el ancho de las columnas* (Implementación de resizers)  
-22. *Añade un boton de zoom mas y zoom menos para reducir el tamaño del contenido de cada panel...*  
-23. *Quiero que los botones y check box aparezcan en la barra superior.*  
-24. *Vamos a organizar otra vez los paneles: Quiero que haya dos pestañas en la aplicación...* (Estructura final de Tabs)  
-25. *Quiero que añadas otra pestaña para la ayuda llamada "Ayuda"...*  
-26. *Revisa el código porque la pestaña "Resultado" y "Ayuda" no muestran nada...* (Corrección del HTML cortado)  
-27. *dame una lista de todos los prompt que he usado en esta conversación.*  
-28. *puedes crear un fichero de texto con todo el contexto de este proyecto para poderlo leer.* (Este documento actual)
+## **4\. Autor y licencia**
+Autor: Julio Sanchez Berro  
+Licencia: GPL 3.0  
