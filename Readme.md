@@ -20,6 +20,9 @@ Todo el sistema está contenido en un único archivo index.html, lo que signific
 * **Edición y Borrado:** Capacidad de editar tareas existentes recuperando sus datos en el formulario, o eliminarlas individualmente/en bloque.  
 * **Tabla Reactiva:** Visualización en tiempo real de todas las tareas registradas antes de proceder al cálculo.
 
+[gestión de tareas](.\anexos\gestion.png)
+
+
 ### **🧮 Motor de Cálculo (PERT / CPM)**
 
 * **Fórmula PERT:** Calcula el Tiempo Esperado (TE) mediante la distribución Beta: (Optimista \+ 4\*Probable \+ Pesimista) / 6\.  
